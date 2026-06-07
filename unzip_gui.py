@@ -1,5 +1,3 @@
-import json
-import os
 import threading
 from datetime import datetime
 from pathlib import Path
@@ -13,8 +11,10 @@ from unzip_core import (
     MissingDependencyError,
     delete_archive_and_parts,
     find_archives,
+    get_config_path,
     load_passwords,
     normalize_passwords,
+    open_in_file_manager,
     resolve_7z_executable,
     save_passwords,
     write_log_file,
@@ -25,7 +25,7 @@ APP_TITLE = "UnzipTool"
 WINDOW_SIZE = "1120x760"
 DEFAULT_APPEARANCE = "dark"
 DEFAULT_THEME = "blue"
-CONFIG_FILE = Path(__file__).with_name("unzip_config.json")
+CONFIG_FILE = get_config_path()
 
 
 class UnzipToolApp:
@@ -285,7 +285,7 @@ class UnzipToolApp:
         if not Path(folder).exists():
             messagebox.showerror("错误", "目录不存在，你这路径比没睡醒还虚。")
             return
-        os.startfile(folder)
+        open_in_file_manager(folder)
 
     def import_passwords_dialog(self) -> None:
         dialog = ctk.CTkInputDialog(

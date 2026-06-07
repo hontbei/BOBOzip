@@ -32,3 +32,9 @@ Thumbs.db
 
 # Password config (do not upload)
 unzip_config.json
+
+# Build / packaging artifacts
+*.pfx
+*.cer
+*.msix
+*.AppImage

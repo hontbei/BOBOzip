@@ -43,6 +43,14 @@ python unzip_gui.py
 python -m unittest tests/test_unzip_core.py
 ```
 
+## 打包发布
+
+支持构建 Windows 便携版（单文件 exe）、Windows MSIX 安装包，以及 Linux AppImage。
+详见 [BUILD.md](BUILD.md)。
+
+- Windows 便携版：`python -m PyInstaller bobozip.spec --clean --noconfirm`
+- 推送 `v*` tag 会通过 GitHub Actions 自动构建并发布到 Release
+
 ## 提醒
 
 1. 解压成功后会删除压缩包，请先备份重要文件

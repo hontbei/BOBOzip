@@ -1,0 +1,9 @@
+# Keep shell scripts LF so they run on Linux/macOS
+*.sh text eol=lf
+
+# Normalize line endings for source files
+*.py text
+*.md text
+*.json text
+*.yml text
+*.xml text

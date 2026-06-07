@@ -4,6 +4,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 import zipfile
 from dataclasses import dataclass
 from datetime import datetime
@@ -24,6 +25,45 @@ CONFIG_FILE_NAME = "unzip_config.json"
 LOG_PREFIX = "unzip_log_"
 SUPPORTED_ARCHIVES = {".zip", ".rar", ".7z"}
 ZIP_PASSWORD_ENCODINGS = ["utf-8", "gbk", "gb2312", "latin1", "cp437"]
+APP_DIR_NAME = "BOBOzip"
+
+
+def is_frozen() -> bool:
+    """Whether running inside a PyInstaller (or similar) bundle."""
+    return getattr(sys, "frozen", False)
+
+
+def get_config_path() -> Path:
+    """Return the per-user config file path.
+
+    When running from source we keep the config next to the script for
+    convenience. When running as a frozen bundle the script directory is a
+    temporary/extraction folder, so we persist into a per-user location.
+    """
+    if not is_frozen():
+        return Path(__file__).with_name(CONFIG_FILE_NAME)
+
+    if sys.platform == "win32":
+        base = os.environ.get("APPDATA") or str(Path.home())
+        config_dir = Path(base) / APP_DIR_NAME
+    elif sys.platform == "darwin":
+        config_dir = Path.home() / "Library" / "Application Support" / APP_DIR_NAME
+    else:
+        base = os.environ.get("XDG_CONFIG_HOME") or str(Path.home() / ".config")
+        config_dir = Path(base) / APP_DIR_NAME
+
+    return config_dir / CONFIG_FILE_NAME
+
+
+def open_in_file_manager(folder: Path | str) -> None:
+    """Open a folder in the OS file manager, cross-platform."""
+    target = str(folder)
+    if sys.platform == "win32":
+        os.startfile(target)  # type: ignore[attr-defined]
+    elif sys.platform == "darwin":
+        subprocess.run(["open", target], check=False)
+    else:
+        subprocess.run(["xdg-open", target], check=False)
 
 
 class MissingDependencyError(RuntimeError):
@@ -158,20 +198,35 @@ def resolve_7z_executable() -> str:
         return env_override
 
     candidates = [
+        # Windows
         r"C:\Program Files\7-Zip\7z.exe",
         r"C:\Program Files (x86)\7-Zip\7z.exe",
+        # WSL reaching into Windows
         "/mnt/c/Program Files/7-Zip/7z.exe",
         "/mnt/c/Program Files (x86)/7-Zip/7z.exe",
+        # macOS (Homebrew)
+        "/opt/homebrew/bin/7z",
+        "/opt/homebrew/bin/7zz",
+        "/usr/local/bin/7z",
+        "/usr/local/bin/7zz",
+        # Linux
+        "/usr/bin/7z",
+        "/usr/bin/7zz",
+        "/usr/bin/7za",
+        "/usr/local/bin/7za",
+        # PATH lookups (cover all platforms / binary names)
         shutil.which("7z.exe"),
         shutil.which("7z"),
         shutil.which("7za.exe"),
         shutil.which("7za"),
+        shutil.which("7zz"),
+        shutil.which("7zr"),
     ]
     for candidate in candidates:
         if candidate and Path(candidate).exists():
             return candidate
     raise MissingDependencyError(
-        "未找到 7-Zip。请先安装 7-Zip，或把 7z.exe 路径写入环境变量 UNZIPTOOL_7Z_PATH 后重试"
+        "未找到 7-Zip。请先安装 7-Zip，或把 7z 可执行文件路径写入环境变量 UNZIPTOOL_7Z_PATH 后重试"
     )
 
 
