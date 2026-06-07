@@ -53,7 +53,12 @@ python -m unittest tests/test_unzip_core.py
 
 ## 提醒
 
-1. 解压成功后会删除压缩包，请先备份重要文件
+1. 解压成功后**可选**删除压缩包（默认关闭），勾选后请先备份重要文件
 2. 依赖未安装齐全时，RAR / 7Z 功能会报缺少依赖
 3. 若未安装 7-Zip，分卷 ZIP 的兜底方案无法使用
 4. 推荐在 Windows 下运行此 GUI
+
+## 许可证
+
+本软件为专有软件，保留所有权利，详见 [LICENSE](LICENSE)。
+第三方开源组件声明见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。

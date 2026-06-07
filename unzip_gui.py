@@ -45,6 +45,7 @@ class UnzipToolApp:
         self.stats_text = ctk.StringVar(value="成功 0 / 失败 0 / 跳过 0")
         self.password_count_text = ctk.StringVar(value="密码库：0 项")
         self.archive_count_text = ctk.StringVar(value="待处理压缩包：0")
+        self.delete_after_extract = ctk.BooleanVar(value=False)
 
         self.password_cards: list[str] = []
         self.log_messages: list[str] = []
@@ -207,6 +208,15 @@ class UnzipToolApp:
             state="disabled",
         )
         self.stop_button.grid(row=1, column=1, sticky="ew", padx=(8, 16), pady=(0, 16))
+
+        self.delete_checkbox = ctk.CTkCheckBox(
+            control_card,
+            text="解压成功后删除原压缩包（默认关闭，请先备份）",
+            variable=self.delete_after_extract,
+            onvalue=True,
+            offvalue=False,
+        )
+        self.delete_checkbox.grid(row=2, column=0, columnspan=2, sticky="w", padx=16, pady=(0, 16))
 
         password_input_card = ctk.CTkFrame(right_panel, corner_radius=16)
         password_input_card.grid(row=1, column=0, sticky="ew", padx=18, pady=10)
@@ -502,9 +512,12 @@ class UnzipToolApp:
                 if result["success"]:
                     success_count += 1
                     self.log(f"✓ 成功：{archive_path.name}")
-                    deleted_files = delete_archive_and_parts(archive_path)
-                    if deleted_files:
-                        self.log("  已删除：" + ", ".join(path.name for path in deleted_files))
+                    if self.delete_after_extract.get():
+                        deleted_files = delete_archive_and_parts(archive_path)
+                        if deleted_files:
+                            self.log("  已删除：" + ", ".join(path.name for path in deleted_files))
+                    else:
+                        self.log("  已保留原压缩包（未勾选删除）")
                 elif result["skipped"]:
                     skip_count += 1
                     self.log(f"○ 跳过：{archive_path.name} - {result['message']}")

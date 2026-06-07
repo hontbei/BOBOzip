@@ -15,7 +15,7 @@
     <DisplayName>BOBOzip</DisplayName>
     <PublisherDisplayName>hontbei</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
-    <Description>BOBOzip - 批量解压工具，支持 ZIP / RAR / 7Z 自动尝试密码</Description>
+    <Description>BOBOzip 是一款批量解压工具，帮助你管理自己的加密压缩包。支持 ZIP / RAR / 7Z，可保存常用密码并自动尝试解压你拥有的文件。</Description>
   </Properties>
 
   <Dependencies>
@@ -31,7 +31,7 @@
     <Application Id="BOBOzip" Executable="BOBOzip.exe" EntryPoint="Windows.FullTrustApplication">
       <uap:VisualElements
         DisplayName="BOBOzip"
-        Description="BOBOzip - 批量解压工具"
+        Description="BOBOzip - 管理你自己的加密压缩包"
         BackgroundColor="transparent"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png">
