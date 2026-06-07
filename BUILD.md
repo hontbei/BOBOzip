@@ -48,6 +48,17 @@ Import-Certificate -FilePath dist/BOBOzip-selfsigned.cer -CertStoreLocation Cert
 
 > 注：自签名证书仅用于本地/开源分发。若要上架微软商店或免证书安装，需要正式的代码签名证书。
 
+### 上架微软商店
+
+正式发布到微软商店请参见 [STORE_RELEASE.md](STORE_RELEASE.md)。
+商店包用 `-Store` 参数生成（未签名，由商店重新签名）：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File packaging/build_msix.ps1 -Store `
+  -IdentityName "<Partner Center 的 Name>" `
+  -Publisher "<Partner Center 的 Publisher>"
+```
+
 ## 自动构建（GitHub Actions）
 
 `.github/workflows/build.yml` 会在以下情况触发：

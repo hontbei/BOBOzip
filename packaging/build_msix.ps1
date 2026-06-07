@@ -5,9 +5,27 @@
 .DESCRIPTION
     Lays out a packaging folder containing the PyInstaller-built exe, generated
     logo assets and the AppxManifest, then calls makeappx.exe to produce an
-    .msix. If a signing certificate is available the package is signed with
-    signtool.exe; otherwise an unsigned package is produced (users must install
-    a trusted cert / use the self-signed cert that is also exported).
+    .msix.
+
+    Two modes:
+      * Default (sideload): signs the package with a generated self-signed
+        certificate so you can install it locally for testing. The matching
+        .cer is exported and must be imported into "Trusted People" first.
+      * -Store: produces an UNSIGNED package intended for upload to the
+        Microsoft Partner Center. The Store re-signs it, so do NOT sign it
+        yourself. Identity Name/Publisher MUST match the values assigned to
+        your app in Partner Center.
+
+.PARAMETER IdentityName
+    Package Identity/Name. For Store submission use the value shown under
+    Partner Center > Product Identity (e.g. "1234Publisher.BOBOzip").
+
+.PARAMETER Publisher
+    Package Identity/Publisher. For Store submission use the exact Publisher
+    value (e.g. "CN=ABCD1234-...") from Partner Center > Product Identity.
+
+.PARAMETER PublisherDisplayName
+    Human-readable publisher name shown to users.
 
 .NOTES
     Designed to run on GitHub Actions windows-latest where the Windows SDK
@@ -16,7 +34,11 @@
 param(
     [string]$ExePath = "dist/BOBOzip.exe",
     [string]$OutputDir = "dist",
-    [string]$Version = "1.0.0.0"
+    [string]$Version = "1.0.0.0",
+    [string]$IdentityName = "hontbei.BOBOzip",
+    [string]$Publisher = "CN=BOBOzip",
+    [string]$PublisherDisplayName = "hontbei",
+    [switch]$Store
 )
 
 $ErrorActionPreference = "Stop"
@@ -31,11 +53,16 @@ New-Item -ItemType Directory -Force -Path $assets | Out-Null
 Write-Host "[msix] Copying executable..."
 Copy-Item $ExePath (Join-Path $layout "BOBOzip.exe")
 
-Write-Host "[msix] Copying manifest..."
+Write-Host "[msix] Writing manifest (Identity: $IdentityName / $Publisher)..."
 $manifestSrc = Join-Path $PSScriptRoot "AppxManifest.xml"
 $manifestDst = Join-Path $layout "AppxManifest.xml"
-(Get-Content $manifestSrc -Raw) -replace 'Version="1\.0\.0\.0"', "Version=`"$Version`"" |
-    Set-Content $manifestDst -Encoding UTF8
+$utf8 = [System.Text.UTF8Encoding]::new($false)  # UTF-8 without BOM
+$manifest = [System.IO.File]::ReadAllText($manifestSrc, $utf8)
+$manifest = $manifest -replace '__IDENTITY_NAME__', $IdentityName
+$manifest = $manifest -replace '__PUBLISHER__', $Publisher
+$manifest = $manifest -replace '__PUBLISHER_DISPLAY_NAME__', $PublisherDisplayName
+$manifest = $manifest -replace 'Version="1\.0\.0\.0"', "Version=`"$Version`""
+[System.IO.File]::WriteAllText($manifestDst, $manifest, $utf8)
 
 Write-Host "[msix] Generating logo assets..."
 python (Join-Path $PSScriptRoot "make_assets.py") $assets
@@ -64,20 +91,31 @@ $makeappx = Find-SdkTool "makeappx.exe"
 if (-not $makeappx) { throw "makeappx.exe not found. Windows SDK is required." }
 Write-Host "[msix] makeappx: $makeappx"
 
-$msixPath = Join-Path $OutputDir "BOBOzip.msix"
 New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
 
-Write-Host "[msix] Building package..."
+if ($Store) {
+    # ---- Store submission package: UNSIGNED -----------------------------------
+    $msixPath = Join-Path $OutputDir "BOBOzip-store.msix"
+    Write-Host "[msix] Building STORE package (unsigned) -> $msixPath"
+    & $makeappx pack /d $layout /p $msixPath /overwrite
+    if ($LASTEXITCODE -ne 0) { throw "makeappx failed with exit code $LASTEXITCODE" }
+    Write-Host "[msix] Store package ready. Upload to Partner Center; do NOT sign it yourself."
+    Write-Host "[msix] Done -> $msixPath"
+    return
+}
+
+# ---- Sideload package: signed with a self-signed certificate -----------------
+$msixPath = Join-Path $OutputDir "BOBOzip.msix"
+Write-Host "[msix] Building sideload package -> $msixPath"
 & $makeappx pack /d $layout /p $msixPath /overwrite
 if ($LASTEXITCODE -ne 0) { throw "makeappx failed with exit code $LASTEXITCODE" }
 
-# --- Sign with a self-signed certificate -------------------------------------
 $signtool = Find-SdkTool "signtool.exe"
 if ($signtool) {
-    Write-Host "[msix] Creating self-signed certificate..."
+    Write-Host "[msix] Creating self-signed certificate (subject must match Publisher: $Publisher)..."
     $cert = New-SelfSignedCertificate `
         -Type Custom `
-        -Subject "CN=BOBOzip" `
+        -Subject $Publisher `
         -KeyUsage DigitalSignature `
         -FriendlyName "BOBOzip Self Signed" `
         -CertStoreLocation "Cert:\CurrentUser\My" `
@@ -94,7 +132,7 @@ if ($signtool) {
     if ($LASTEXITCODE -ne 0) {
         Write-Warning "signtool failed; leaving package unsigned."
     } else {
-        Write-Host "[msix] Signed. Install $cerPath into 'Trusted People' before installing the MSIX."
+        Write-Host "[msix] Signed. Import $cerPath into 'Trusted People' before installing the MSIX."
     }
 } else {
     Write-Warning "signtool.exe not found; producing unsigned MSIX."
