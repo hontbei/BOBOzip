@@ -29,3 +29,6 @@ Thumbs.db
 
 # Windows shortcuts
 *.lnk
+
+# Password config (do not upload)
+unzip_config.json
